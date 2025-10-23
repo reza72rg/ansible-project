@@ -1,0 +1,82 @@
+- name: --- Create tomcat user and group ---
+  user:
+    name: tomcat
+    system: yes
+    shell: /bin/false
+    home: /opt/tomcat
+    create_home: no
+
+- name: --- install java ---
+  yum:
+      name: java-1.8.0-openjdk-devel
+      state: present
+
+- name: --- create directory ---
+  file:
+      path: "{{ tomcat_path }}"
+      state: directory
+      owner: "{{ tomcat_user }}"
+      group: "{{ tomcat_group }}"
+      mode: "0755"
+
+- name: --- Download correct Tomcat binary ---
+  get_url:
+    url: https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.111/bin/apache-tomcat-9.0.111.tar.gz
+    dest: "{{ tomcat_path }}"
+    validate_certs: no
+
+- name: --- Extract Tomcat archive ---
+  unarchive:
+      src: "{{ tomcat_path }}/apache-tomcat-9.0.111.tar.gz"
+      dest: "{{ tomcat_path }}"
+      owner: "{{ tomcat_user }}"
+      group: "{{ tomcat_group }}"
+      remote_src: yes
+
+- name: --- Create tomcat symlink ---
+  file:
+    src: "{{ tomcat_path }}/apache-tomcat-9.0.111/"
+    dest: /opt/tomcat
+    state: link
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+
+- name: --- change permission ---
+  shell: chown -R "{{tomcat_user}}:{{tomcat_group }}" /opt
+
+- name: --- set var file ---
+  get_url:
+    url: https://github.com/efsavage/hello-world-war/raw/refs/heads/master/dist/hello-world.war
+    dest: /opt/tomcat/webapps/
+
+- name: --- Create tomcat service ---
+  template:
+    src: tomcat.service.j2
+    dest: /etc/systemd/system/tomcat.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: --- change tomcat config ---
+  template:
+    src: server.xml.j2
+    dest: /opt/tomcat/conf/server.xml 
+  notify: restart tomcat
+
+- name: ---restart daemon ---
+  systemd:
+    daemon_reload: yes
+
+- name: --- restart service ---
+  service:
+    name: tomcat
+    enabled: yes
+    state: started
+
+- name: --- Open Tomcat port in firewalld ---
+  firewalld:
+    port: "{{ tomcat_port | default('8080') }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  notify: restart tomcat

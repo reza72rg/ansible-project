@@ -1,0 +1,7 @@
+- name: My First Ansible Playbook
+  hosts: all
+  become: yes
+  vars:
+          - ansible_user: ansible
+  roles:
+      - myproject

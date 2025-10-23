@@ -1,0 +1,25 @@
+[Unit]
+Description=Apache Tomcat Web Application Container
+After=syslog.target network.target
+
+[Service]
+Type=forking
+
+Environment="JAVA_HOME={{ tomcat_java_home | default('/usr/lib/jvm/java-11-openjdk') }}"
+Environment="CATALINA_PID={{ tomcat_install_dir | default('/opt/tomcat') }}/temp/tomcat.pid"
+Environment="CATALINA_HOME={{ tomcat_install_dir | default('/opt/tomcat') }}"
+Environment="CATALINA_BASE={{ tomcat_install_dir | default('/opt/tomcat') }}"
+Environment="CATALINA_OPTS=-Xms{{ tomcat_xms | default('512m') }} -Xmx{{ tomcat_xmx | default('1024m') }} -server -XX:+UseParallelGC"
+Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+
+ExecStart={{ tomcat_install_dir | default('/opt/tomcat') }}/bin/startup.sh
+ExecStop={{ tomcat_install_dir | default('/opt/tomcat') }}/bin/shutdown.sh
+
+User={{ tomcat_user | default('tomcat') }}
+Group={{ tomcat_group | default('tomcat') }}
+UMask=0007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+
+
+---
+# Tomcat installation variables
+tomcat_path: "/opt/java-tomcat"
+tomcat_install_dir: "/opt/tomcat"
+tomcat_user: "tomcat"
+tomcat_group: "tomcat"
+# Java configuration
+tomcat_java_home: "/usr/lib/jvm/java-1.8.0-openjdk"
+
+# Memory settings
+tomcat_xms: "512m"
+tomcat_xmx: "1024m"
+
+# Tomcat version
+tomcat_version: "9.0.111"
+
+
+
+tomcat_port: "80"
