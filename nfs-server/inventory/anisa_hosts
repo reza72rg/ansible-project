@@ -1,0 +1,18 @@
+[all:children]
+clients
+servers
+
+[clients]
+ansible-client-1 ansible_host=192.168.56.108 role=nfsclient
+ansible-client-2 ansible_host=192.168.56.109 role=nfsclient
+
+[servers]
+ansible-server ansible_host=192.168.56.101 role=nfsserver
+
+# Add group variables
+[servers:vars]
+server_role=nfsserver
+
+[clients:vars]
+server_role=nfsclient
+

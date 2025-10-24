@@ -1,0 +1,7 @@
+- name: Nfs server
+  hosts: all
+  become: yes
+  vars:
+      - ansible_user: ansible
+  roles:
+      - myproject

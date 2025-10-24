@@ -1,0 +1,117 @@
+- name: Set server_role variable
+  set_fact:
+    server_role: "{{ role }}"
+  tags: step1
+
+- name: --- install ufw ---
+  apt:
+     name: "{{ item }}"
+     state: present
+  loop:
+     - ufw
+     - nfs-common
+  when: ansible_os_family == "Debian"
+  tags: step1
+
+- name: --- active servise ufw ---
+  ufw:
+     state: enabled
+  when: ansible_os_family == "Debian"
+  tags: step1
+
+- name: --- install firewall-cmd ---
+  yum:
+     name: "{{ item }}"
+     state: present
+  loop:
+     - firewalld
+     - nfs-utils
+  when: ansible_os_family == "RedHat"
+  tags: step1
+
+- name: --- active servise firewall-cmd ---
+  service:
+     name: "{{ item }}"
+     state: started
+     enabled: yes
+  loop:
+     - firewalld
+     - nfs-server
+  when: ansible_os_family == "RedHat"
+  tags: step1
+
+- name: --- allow ports ufw ---
+  ufw:
+     rule: allow
+     port: "{{ item }}"
+     proto: tcp
+  loop:
+     - 22   
+  when: ansible_os_family == "Debian"
+  tags: step1
+
+- name: --- allow services ---
+  firewalld:
+     service: "{{ item }}"
+     permanent: yes
+     state: enabled
+     zone: public
+     immediate: yes
+  loop:
+     - ssh
+     - nfs
+  when: ansible_os_family == "RedHat"
+  tags: step1
+
+- name: --- Create nfsnobody user if it doesn't exist ---
+  user:
+    name: nfsnobody
+    system: yes
+    shell: /sbin/nologin
+    home: /var/lib/nfs
+    state: present
+  when: server_role == "nfsserver" and ansible_os_family == "RedHat"
+
+- name: --- Create shared directory ---
+  file:
+    path: /data1
+    state: directory
+    owner: "{{ 'nfsnobody' if ansible_os_family == 'RedHat' else 'nobody' }}"
+    group: "{{ 'nfsnobody' if ansible_os_family == 'RedHat' else 'nogroup' }}"
+    mode: "0755"
+  when: server_role == "nfsserver"
+
+- name: --- create file config ---
+  file:
+     path: /etc/exports
+     state: touch
+  when: server_role == "nfsserver"
+
+- name: --- Configure /etc/exports on NFS server ---
+  blockinfile:
+    path: /etc/exports
+    block: |
+      /data1 {% for client in groups['clients'] %}{{ hostvars[client].ansible_host }}(rw,sync,no_root_squash,no_subtree_check) {% endfor %}
+    create: yes
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - NFS EXPORTS"
+  when: server_role == "nfsserver"
+
+- name: --- exportfs ---
+  shell: "exportfs -ra"
+  when: server_role == "nfsserver"
+
+- name: --- Create mount directory (NFS Clients) ---
+  file:
+    path: /data1
+    state: directory
+    mode: "0755"
+  when: server_role == "nfsclient"
+
+- name: --- Mount NFS share (NFS Clients) ---
+  mount:
+    src: "{{ hostvars[groups['servers'][0]].ansible_host }}:/data1"
+    path: /data1
+    opts: rw,sync,hard,intr
+    state: mounted
+    fstype: nfs
+  when: server_role == "nfsclient"
